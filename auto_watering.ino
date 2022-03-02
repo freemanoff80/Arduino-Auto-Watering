@@ -69,21 +69,23 @@ int SETTINGS_CHANGE_INCREMENT = 0;
 
 int WATERING_TIMER = 2;
 int HUMIDITY_LIMIT_MIN = 20;
+int HUMIDITY_SENSOR_SWITCH = 1;
 int PUMPING_TIME = 5;
-int LEARNING = 0;
 int FORCE_WATERING = 0;
 int SETTINGS_MODE_TIMER = 30;
 int LCD_BACKLIGHT_TIMER = 40;
 int ERRORS_DETECTION_TIME = 1;
+int WATERING_MODE = 1;
 
 char OUTPUT_WATERING_TIMER[20];
 char OUTPUT_HUMIDITY_LIMIT_MIN[20];
+char OUTPUT_HUMIDITY_SENSOR_SWITCH[20];
 char OUTPUT_PUMPING_TIME[20];
-char OUTPUT_LEARNING[20];
 char OUTPUT_FORCE_WATERING[20];
 char OUTPUT_SETTINGS_MODE_TIMER[20];
 char OUTPUT_LCD_BACKLIGHT_TIMER[20];
 char OUTPUT_ERRORS_DETECTION_TIME[20];
+char OUTPUT_WATERING_MODE[20];
 
 
 // ---------- Errors Values
@@ -135,13 +137,13 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
   const char *settings_Names_ARREA[] = {
     "WaterTimer",
     "HumMinLim",  
+    "HumSensor",
     "PumpTime",
-    "Lerning",
     "ForceWater",
     "SetModTime",
-    //"LCDBLTime",
     "BckLghtTime",
     "ErrDetTime",
+    "WaterMode",
   };
 
   const int SIZE_settings_ARREA = sizeof( settings_Names_ARREA )/sizeof( int );
@@ -150,32 +152,35 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
   { // Default Settings Values
     &WATERING_TIMER,
     &HUMIDITY_LIMIT_MIN,
+    &HUMIDITY_SENSOR_SWITCH,
     &PUMPING_TIME,
-    &LEARNING,
     &FORCE_WATERING,
     &SETTINGS_MODE_TIMER,
     &LCD_BACKLIGHT_TIMER,
     &ERRORS_DETECTION_TIME,
+    &WATERING_MODE,
   },
   { // Low Limit Settings Values
-    1,
-    0,
-    1,
-    0,
-    0,
-    10,
-    10,
-    0,
+    1,    //  WaterTimer
+    0,    //  HumMinLim
+    0,    //  HumSensor
+    1,    //  PumpTime
+    0,    //  ForceWater
+    10,   //  SetModTime
+    10,   //  BckLghtTime
+    0,    //  ErrDetTime
+    0,    //  WaterMode
   },
   { // High Limit Settings Values
-    336,
-    90,
-    10,
-    1,
-    1,
-    120,
-    120,
-    60,
+    336,  //  WaterTimer
+    90,   //  HumMinLim
+    1,    //  HumSensor
+    10,   //  PumpTime
+    1,    //  ForceWater
+    120,  //  SetModTime
+    120,  //  BckLghtTime
+    60,   //  ErrDetTime
+    1,    //  WaterMode
   }
   };
 
@@ -183,12 +188,13 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
   char *settings_Output_ARREA[ SIZE_settings_ARREA ] = {
     OUTPUT_WATERING_TIMER,
     OUTPUT_HUMIDITY_LIMIT_MIN,
+    OUTPUT_HUMIDITY_SENSOR_SWITCH,
     OUTPUT_PUMPING_TIME,
-    OUTPUT_LEARNING,
     OUTPUT_FORCE_WATERING,
     OUTPUT_SETTINGS_MODE_TIMER,
     OUTPUT_LCD_BACKLIGHT_TIMER,
     OUTPUT_ERRORS_DETECTION_TIME,
+    OUTPUT_WATERING_MODE,
   };
 
   // ---------- Errors Arrays
@@ -202,23 +208,6 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
 
   int errors_Count_ARRAY[ SIZE_errors_ARRAY ];
 
-/*
-  int TEST_VALUE_1 = 25;
-  int TEST_VALUE_2 = 50;
-  int TEST_VALUE_3 = 75;
-
-  int tVal = 10;
-  int *tPtr = &tVal;
-  //int *tPtr;
-  //tPtr = &tVal;
-
-  // ---------- Test Array
-  int *test_ARREA[3] = {
-    &TEST_VALUE_1,
-    &TEST_VALUE_2,
-    &TEST_VALUE_3,
-  };
-*/
 
 // ================== Function For Output On Display
 
@@ -299,11 +288,11 @@ unsigned long learn_pump_delay( int HUMIDITY_CURRENT, int HUMIDITY_LIMIT, unsign
     unsigned long PUMP_DELAY_RECOMEND = ( ( PUMP_DELAY_CURRENT / ( 100 - HUMIDITY_CURRENT ) ) * ( 100 - HUMIDITY_LIMIT ) );
     
     if ( PUMP_DELAY_RECOMEND >= ( 60000 * 60) * 96  ) {
-      PUMP_DELAY_RECOMEND = ( 60000 * 60) * 96 ;
+      PUMP_DELAY_RECOMEND = ( 60000 * 60 ) * 96 ;
     }
 
     if ( PUMP_DELAY_RECOMEND <= ( 60000 * 60) * 1 ) {
-      PUMP_DELAY_RECOMEND = ( 60000 * 60) * 1 ;
+      PUMP_DELAY_RECOMEND = ( 60000 * 60 ) * 1 ;
     }
     
     return PUMP_DELAY_RECOMEND;
@@ -424,54 +413,60 @@ void loop() {
       //Serial.println( LCD_BACKLIGHT_STATUS );
     }
 
-    
+
+
+
     // ==================== Get Data From Humidity Sensor
-    if ( millis() - HUMIDITY_SENSOR_TIMER_CHECK > 10000 ) {    // Check Humidity Sensor Value With Interval = 10 sec      
 
-      HUMIDITY_SENSOR_VALUE = analogRead( HUMIDITY_SENSOR );
-      HUMIDITY_SENSOR_VALUE = map( analogRead( HUMIDITY_SENSOR ), 452, 235, 0, 100);
-      constrain( HUMIDITY_SENSOR_VALUE, 0, 100 );
+    if ( HUMIDITY_SENSOR_SWITCH ) {   // Get Data From Humidity Sensor, Check Low Humidity Level, Output Error If Humidity Sensor Switch On 
 
-      Serial.print( HUMIDITY_SENSOR_VALUE );
-      Serial.println( " - Humidity" );
-
-      HUMIDITY_SENSOR_TIMER_CHECK = millis();  // Reset Timer Humidiry Sensor Check
-      
-    }
-
-
-    // ================== Check Low Humidity For Error
-    if ( HUMIDITY_SENSOR_VALUE <= HUMIDITY_LIMIT_MIN ) {      
-      
-      LOW_HUMIDITY_STATUS = true;
-    }
-    else {
-      LOW_HUMIDITY_STATUS = false;
-    }
-
-    if ( LOW_HUMIDITY_STATUS && LOW_HUMIDITY_STATUS_FLAG ) {
-
-      if ( LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
-        LOW_HUMIDITY_STATUS_TIMER = millis();
-        LOW_HUMIDITY_STATUS_TIMER_FLAG = false;
-      }
-
-      if ( millis() - LOW_HUMIDITY_STATUS_TIMER > 60000 * ERRORS_DETECTION_TIME ) {
+      if ( millis() - HUMIDITY_SENSOR_TIMER_CHECK > 10000 ) {    // Check Humidity Sensor Value With Interval = 10 sec      
+  
+        HUMIDITY_SENSOR_VALUE = analogRead( HUMIDITY_SENSOR );
+        HUMIDITY_SENSOR_VALUE = map( analogRead( HUMIDITY_SENSOR ), 452, 235, 0, 100);
+        constrain( HUMIDITY_SENSOR_VALUE, 0, 100 );
+  
+        Serial.print( HUMIDITY_SENSOR_VALUE );
+        Serial.println( " - Humidity" );
+  
+        HUMIDITY_SENSOR_TIMER_CHECK = millis();  // Reset Timer Humidiry Sensor Check
         
-        LOW_HUMIDITY_STATUS_FLAG = 0;
-        errors_Count_ARRAY[1] = 1;  // Add ID Error To Error Array
+      }
+  
+  
+      // ================== Check Low Humidity For Error
+      if ( HUMIDITY_SENSOR_VALUE <= HUMIDITY_LIMIT_MIN ) {      
+        
+        LOW_HUMIDITY_STATUS = true;
+      }
+      else {
+        LOW_HUMIDITY_STATUS = false;
+      }
+  
+      if ( LOW_HUMIDITY_STATUS && LOW_HUMIDITY_STATUS_FLAG ) {
+  
+        if ( LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
+          LOW_HUMIDITY_STATUS_TIMER = millis();
+          LOW_HUMIDITY_STATUS_TIMER_FLAG = false;
         }
-      }
-
-    if ( !LOW_HUMIDITY_STATUS ) {
-
-      if ( !LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
-        LOW_HUMIDITY_STATUS_TIMER_FLAG = true;
-      }
-
-      if ( !LOW_HUMIDITY_STATUS_FLAG ) {
-        LOW_HUMIDITY_STATUS_FLAG = 1;
-        errors_Count_ARRAY[1] = 0;  // Delete ID Error From Error Array
+  
+        if ( millis() - LOW_HUMIDITY_STATUS_TIMER > 60000 * ERRORS_DETECTION_TIME ) {
+          
+          LOW_HUMIDITY_STATUS_FLAG = 0;
+          errors_Count_ARRAY[1] = 1;  // Add ID Error To Error Array
+          }
+        }
+  
+      if ( !LOW_HUMIDITY_STATUS ) {
+  
+        if ( !LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
+          LOW_HUMIDITY_STATUS_TIMER_FLAG = true;
+        }
+  
+        if ( !LOW_HUMIDITY_STATUS_FLAG ) {
+          LOW_HUMIDITY_STATUS_FLAG = 1;
+          errors_Count_ARRAY[1] = 0;  // Delete ID Error From Error Array
+        }
       }
     }
 
@@ -482,13 +477,11 @@ void loop() {
       if ( LIQUID_LEVEL_STATUS_TIMER_FLAG ) {
         LIQUID_LEVEL_STATUS_TIMER = millis(); // Reset Low Liquid Level Timer
         LIQUID_LEVEL_STATUS_TIMER_FLAG = false;
-        //Serial.println( "### Liquid Level Timer RESET ###" );
       }
         
       if ( millis() - LIQUID_LEVEL_STATUS_TIMER > 60000 * ERRORS_DETECTION_TIME ) {
           LIQUID_LEVEL_STATUS_FLAG = 0;
           errors_Count_ARRAY[2] = 1;  // Add ID Error For Low Liquid Level To Error Array
-          //Serial.println( "Liquid Level Error - True #####" );
       }
     }
 
@@ -496,29 +489,32 @@ void loop() {
       
       if ( !LIQUID_LEVEL_STATUS_TIMER_FLAG ) {
         LIQUID_LEVEL_STATUS_TIMER_FLAG = true;
-        //Serial.println( "### LLS Timer - TRUE ###" );
       }
       
       if ( !LIQUID_LEVEL_STATUS_FLAG ) {
         LIQUID_LEVEL_STATUS_FLAG = 1;
         errors_Count_ARRAY[2] = 0;  // Delete ID Error For Low Liquid Level To Error Array
-        //Serial.println( "Liquid Level Error - False #####" );
       }
     }
 
 
-    if ( FORCE_WATERING == 1 || millis() - PUMP_SWITCH_ON_TIMER > ( 60000 * 60 * WATERING_TIMER ) ) {   //  Check Timer For Switch ON Pump
+    // ================== Pumping Switch On
+    if ( FORCE_WATERING || millis() - PUMP_SWITCH_ON_TIMER > ( 60000 * 60 * WATERING_TIMER ) ) {   //  Check Timer For Switch ON Pump      
 
       PUMP_SWITCH_FLAG = 1;
       PUMP_SWITCH_STATUS = 1;
       FORCE_WATERING = 0;    //  Reset Force Watering To Off
+
+      if ( HUMIDITY_SENSOR_SWITCH ) {
+        WATERING_INTERVAL_RECOMENDED = ( learn_pump_delay( HUMIDITY_SENSOR_VALUE, HUMIDITY_LIMIT_MIN, ( 60000 * 60 * WATERING_TIMER ) ) / ( 60000 * 60 ) );
+      }
 
       strcpy( OUTPUT_FORCE_WATERING, "On" );
       digitalWrite( LED_PUMP, PUMP_SWITCH_STATUS );   // LED_PUMP_SWITCH - ON
       if ( PUMP_INCLUDE ) {
         digitalWrite( PUMP, PUMP_SWITCH_STATUS );   // PUMP_SWITCH - ON
       }
-      
+
       PUMP_SWITCH_OFF_TIMER = millis() + ( PUMPING_TIME * 1000 ) ;    // Set Time Of Pumping
       PUMP_SWITCH_ON_TIMER = millis();   // Reset Timer Switch Pump
 
@@ -527,7 +523,8 @@ void loop() {
 
     }
 
-    if ( PUMP_SWITCH_FLAG == 1 && millis() > PUMP_SWITCH_OFF_TIMER ) {    // Check Timer For Switch OFF Pumping
+    // ================== Pumping Switch Off
+    if ( PUMP_SWITCH_FLAG && millis() > PUMP_SWITCH_OFF_TIMER ) {    // Check Timer For Switch OFF Pumping
 
       PUMP_SWITCH_FLAG = 0;
       PUMP_SWITCH_STATUS = 0;
@@ -544,12 +541,6 @@ void loop() {
 
     }
 
-
-    // ================== Pumping Learning
-
-    if ( LEARNING ) {
-
-    }
 
     // ================== Timer For Update Display
     if ( millis() - DISPLAY_UPDATE_TIMER >= 1000 || CURSOR_CURRENT_LINE_MEMORY != CURSOR_CURRENT_LINE || SETTINGS_CHANGE_INCREMENT != 0 || DISPLAY_UPDATE_FORCE ) {      
@@ -574,13 +565,14 @@ void loop() {
         sprintf( OUTPUT_WATERING_TIMER, "%id%ih", WATERING_TIMER / 24, WATERING_TIMER % 24 );
         ltoa( HUMIDITY_LIMIT_MIN, OUTPUT_HUMIDITY_LIMIT_MIN, 10 );
         ltoa( PUMPING_TIME, OUTPUT_PUMPING_TIME, 10 );
-        ltoa( LEARNING, OUTPUT_LEARNING, 10 );
-        //ltoa( FORCE_WATERING, OUTPUT_FORCE_WATERING, 10 );
-        //if ( FORCE_WATERING ) strcpy( OUTPUT_FORCE_WATERING, "On" );
-        //else strcpy( OUTPUT_FORCE_WATERING, "Off" );
+
+        if ( HUMIDITY_SENSOR_SWITCH ) strcpy( OUTPUT_HUMIDITY_SENSOR_SWITCH, "On" );
+        else strcpy( OUTPUT_HUMIDITY_SENSOR_SWITCH, "Off" );
+
         ltoa( SETTINGS_MODE_TIMER, OUTPUT_SETTINGS_MODE_TIMER, 10 );
         ltoa( LCD_BACKLIGHT_TIMER, OUTPUT_LCD_BACKLIGHT_TIMER, 10 );
         ltoa( ERRORS_DETECTION_TIME, OUTPUT_ERRORS_DETECTION_TIME, 10 );
+        ltoa( WATERING_MODE, OUTPUT_WATERING_MODE, 10 );
         // ------------------------------------------------------
 
 
@@ -601,8 +593,6 @@ void loop() {
       TIMER_COUNT_VALUES = millis();
       
       WATERING_TIMER_COUNT = ( ( 60000 * 60 * WATERING_TIMER ) - ( millis() - PUMP_SWITCH_ON_TIMER ) ) / 1000L ;
-      //Serial.print( WATERING_TIMER_COUNT );
-      //Serial.println( " - TIMER_PUMP_SWITCH" );
 
       // ---------- Converting Any Value For Monitor Ouput Array
       //sprintf( MONITOR_WATERING_TIMER, "%ud%uh%um%us",
@@ -614,8 +604,16 @@ void loop() {
       );
       Serial.print( MONITOR_WATERING_TIMER );
       Serial.println( " - Watering Timer" );
-      ultoa(HUMIDITY_SENSOR_VALUE, MONITOR_HUMIDITY_SENSOR_VALUE, 10);
-      ultoa(WATERING_INTERVAL_RECOMENDED, MONITOR_WATERING_INTERVAL_RECOMENDED, 10);
+      
+      if ( HUMIDITY_SENSOR_SWITCH ) {
+        ultoa(HUMIDITY_SENSOR_VALUE, MONITOR_HUMIDITY_SENSOR_VALUE, 10);
+        ultoa(WATERING_INTERVAL_RECOMENDED, MONITOR_WATERING_INTERVAL_RECOMENDED, 10);
+      }
+      else {
+        strcpy( MONITOR_HUMIDITY_SENSOR_VALUE, "Off" );
+        strcpy( MONITOR_WATERING_INTERVAL_RECOMENDED, "Off" );
+      }
+
       ultoa(TEST_VAL, MONITOR_TEST_VAL, 10);
       // ------------------------------------------------------
 
@@ -655,121 +653,6 @@ void loop() {
     if (millis() - TIMER_TEST >= 1000) {
       TIMER_TEST = millis();
 
-      /*
-      WATER_TIME_DAYS = ( WATERING_TIMER_COUNT / ( 60 * 60 ) ) / 24;
-      WATER_TIME_HOURS = ( WATERING_TIMER_COUNT / ( 60 * 60 ) ) % 24 ;
-      WATER_TIME_MINUTES = ( WATERING_TIMER_COUNT / 60 ) % 60 ;
-      WATER_TIME_SECONDS = WATERING_TIMER_COUNT % 60;
-      sprintf(OUTPUT_WATER_TIME_TOTAL, "%ud,%uh,%um,%us",
-      //WATER_TIME_DAYS,
-      //WATER_TIME_HOURS,
-      //WATER_TIME_MINUTES,
-      //WATER_TIME_SECONDS
-      //sprintf(OUTPUT_WATER_TIME_TOTAL, "%u,%u,%u,%u",
-      (int)( WATERING_TIMER_COUNT / ( 60 * 60 ) ) / 24,
-      (int)( WATERING_TIMER_COUNT / ( 60 * 60 ) ) % 24,
-      (int)( ( WATERING_TIMER_COUNT / 60 ) % 60 ),
-      (int)( WATERING_TIMER_COUNT % 60 ) 
-      );
-      Serial.println( OUTPUT_WATER_TIME_TOTAL );
-      //WATER_TIME_DAYS = WATERING_TIMER / 24;
-      //WATER_TIME_HOURS = WATERING_TIMER % 24;
-      Serial.print( WATER_TIME_DAYS );
-      Serial.println( "d - Water_Time_Days" );
-      Serial.print( WATER_TIME_HOURS );
-      Serial.println( "h - Water_Time_Hours" );
-      Serial.print( WATER_TIME_MINUTES );
-      Serial.println( "m - Water_Time_Minutes" );
-      Serial.print( WATER_TIME_SECONDS );
-      Serial.println( "s - Water_Time_Seconds" );
-      */
-      //WATER_TIME_TOTAL = (String)WATER_TIME_DAYS + "d," + (String)WATER_TIME_HOURS + "h" ;
-      //Serial.println( WATER_TIME_TOTAL );
-      //sprintf(OUTPUT_WATER_TIME_TOTAL, "%id,%ih", WATER_TIME_DAYS, WATER_TIME_HOURS );
-      //Serial.println( OUTPUT_WATER_TIME_TOTAL );
-      //Serial.println( OUTPUT_WATERING_TIMER );
-      //Serial.println( (String)WATER_TIME_DAYS + "d," + (String)WATER_TIME_HOURS + "h" );
-      //Serial.println( (char)WATER_TIME_DAYS + "d," + (char)WATER_TIME_HOURS + "h" );
-      //Serial.println( errors_Names_ARRAY[ 0 ] );
-      //Serial.println( *settings_Values_ARREA[ 1 ] );
-      //Serial.println( settings_Output_ARREA[ 1 ] );
-      //Serial.print( SETTINGS_CHANGE_INCREMENT );
-      /*
-      Serial.println( " ----------------------" );
-      Serial.print( LOW_HUMIDITY_STATUS_TIMER );
-      Serial.println( " - Value Humidity Timer" );
-      Serial.print( LOW_HUMIDITY_STATUS );
-      Serial.println( " - Low Humidity Status" );
-      Serial.print( LOW_HUMIDITY_STATUS_TIMER_FLAG );
-      Serial.println( " - Low Humidity Status Timer Flag" );
-      Serial.println( " ----------------------" );
-      */
-      /*
-      //int tVal = 10;
-      //int *PTR = &tVal;
-      //tPtr = &tVal;
-      Serial.print( tVal );
-      Serial.println( " - Test_Val : Before" );
-      Serial.print( *tPtr );
-      Serial.println( " - Pointer *PTR" );
-      //*tPtr ++;
-      *tPtr = *tPtr + 1;
-      //&tVal ++;
-      Serial.print( *tPtr );
-      Serial.println( " - Pointer *PTR" );      
-      Serial.print( tVal );
-      Serial.println( " - Test_Val : After" );
-      */
-      /*
-      Serial.print( SETTINGS_MODE_TIMER );
-      Serial.println( " - SETTINGS_MODE_TIMER : Before #####" );
-      //Serial.print( *settings_Values_ARREA[0][5] );
-      //Serial.println( " - Pointer *settings_Values_ARREA[0][5] : Before" );
-      //*settings_Values_ARREA[0][5] = 30;
-      //*settings_Values_ARREA[0][5] = *settings_Values_ARREA[0][5] + 1;
-      Serial.print( *settings_Values_ARREA[0][5] );
-      Serial.println( " - Pointer *settings_Values_ARREA[0][5]" );
-      Serial.print( (int)settings_Values_ARREA[1][5] );
-      Serial.println( " - Pointer *settings_Values_ARREA[1][5]" );
-      Serial.print( (int)settings_Values_ARREA[2][5] );
-      Serial.println( " - Pointer *settings_Values_ARREA[2][5]" );
-      Serial.print( SETTINGS_MODE_TIMER );
-      Serial.println( " - SETTINGS_MODE_TIMER : After #####" );
-      Serial.print( HUMIDITY_LIMIT_MIN );
-      Serial.println( " - Humidiry Limit Min #####" );
-      */
-      //Serial.print( TEST_VALUE_1 );
-      //Serial.println( " - Test_Value_1 : Before #####" );
-      //Serial.print( *test_ARREA[0] );
-      //Serial.println( " - Pointer *test_ARREA[0] : Before" );
-      //*test_ARREA[0] = 30;
-      //*test_ARREA[0] = *test_ARREA[0] + 1;
-      //Serial.print( *test_ARREA[0] );
-      //Serial.println( " - Pointer *test_ARREA[0] : After" );      
-      //Serial.print( (int)*test_ARREA[0] );
-      //Serial.println( " - Test 1 #####" );
-      //Serial.print( *test_ARREA[1] );
-      //Serial.println( " - Test 2 #####" );
-      //Serial.print( *test_ARREA[2] );
-      //Serial.println( " - Test 3 #####" );
-      //Serial.println( " - Settings Test Value From Arrea #####" );
-      //Serial.print( TEST_VALUE_1 );
-      //Serial.println( " - Test_Value_1 : After #####" );
-      //Serial.print( CURSOR_SIZE_ARRAY );
-      //Serial.println( " - Current Cursor Size Array" );
-      //Serial.println( " - Icrement In Test" );
-      //Serial.println( settings_Values_ARREA[0][0] );
-      //Serial.println( settings_Values_ARREA[1][0] );
-      //Serial.println( settings_Values_ARREA[2][0] );
-      //Serial.print( LIQUID_LEVEL_STATUS );
-      //Serial.print( digitalRead( LIQUID_LEVEL_SENSOR ) );
-      //Serial.println( " - Liquid Level Status" );
-      //if ( LIQUID_LEVEL_STATUS ) {
-      //  Serial.print( ( 12000 - ( millis() - LIQUID_LEVEL_STATUS_TIMER  ) ) / 1000L );
-      //  Serial.println( " - Timer LLE TRUE" );
-      //}
-      //Serial.print( ( millis() - LIQUID_LEVEL_STATUS_TIMER ) / 1000);
-      //Serial.println( " - SecondMetr LLE TRUE" );
 
       if ( LCD_BACKLIGHT_STATUS ) {
         Serial.print( ( LCD_BACKLIGHT_TIMER * 1000L - ( millis() - LCD_BACKLIGHT_TIMER_COUNT ) ) / 1000L );
