@@ -75,7 +75,7 @@ int FORCE_WATERING = 0;
 int SETTINGS_MODE_TIMER = 30;
 int LCD_BACKLIGHT_TIMER = 40;
 int ERRORS_DETECTION_TIME = 1;
-int WATERING_MODE = 1;
+int WATERING_MODE = 0;
 
 char OUTPUT_WATERING_TIMER[20];
 char OUTPUT_HUMIDITY_LIMIT_MIN[20];
@@ -87,6 +87,24 @@ char OUTPUT_LCD_BACKLIGHT_TIMER[20];
 char OUTPUT_ERRORS_DETECTION_TIME[20];
 char OUTPUT_WATERING_MODE[20];
 
+// ---------- Watering Modes Vars
+int WATERING_MODE_MEMORY = 1; // Value 1 - For Set Watering Mode At Start Programm
+boolean WATERING_MODE_HUMIDITY_SENSOR_FLAG = true;
+
+boolean WATERING_MODE_TIMER;
+boolean WATERING_MODE_HUMIDITY;
+
+char *watering_modes_Names_ARREA[] = {
+  "Timer",
+  "Humid",
+};
+
+const int SIZE_watering_modes_ARREA = sizeof( watering_modes_Names_ARREA )/sizeof( int );
+
+boolean *watering_modes_Values_ARREA[ SIZE_watering_modes_ARREA ] = {
+  &WATERING_MODE_TIMER,
+  &WATERING_MODE_HUMIDITY,
+};
 
 // ---------- Errors Values
 int COUNT_ERROR = 0;
@@ -180,7 +198,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
     120,  //  SetModTime
     120,  //  BckLghtTime
     60,   //  ErrDetTime
-    1,    //  WaterMode
+    SIZE_watering_modes_ARREA - 1,  //  WaterMode
   }
   };
 
@@ -316,9 +334,9 @@ void setup() {
   CURSOR_SIZE_ARRAY = SIZE_monitoring_ARRAY;
   strcpy( OUTPUT_FORCE_WATERING, "Off" );
 
-  // Settins For LCD
-  lcd.init();           // инициализация
-  lcd.backlight();      // включить подсветку  
+  // ----- Settins For LCD
+  lcd.init();           // Initial LCD
+  lcd.backlight();      // Backlight Switch On  
 
   //errors_Count_ARRAY[1] = 1;
   //errors_Count_ARRAY[2] = 1;
@@ -414,9 +432,33 @@ void loop() {
     }
 
 
+    // ==================== Watering Modes
+    if ( WATERING_MODE_MEMORY != WATERING_MODE || HUMIDITY_SENSOR_SWITCH == 0 && WATERING_MODE_HUMIDITY_SENSOR_FLAG ) { // Check If Watering Mode Change Or Humidity Sensor Off
+      WATERING_MODE_MEMORY = WATERING_MODE;
+
+      if ( HUMIDITY_SENSOR_SWITCH == 1 ) WATERING_MODE_HUMIDITY_SENSOR_FLAG = true; // Change Flag True If Humidity Sensor Switch On
+      else WATERING_MODE_HUMIDITY_SENSOR_FLAG = false;  // Flag For One Time Change Watering Mode From Humidity To Timer if Humidity Sensor Off
+
+      for ( int NUM = 0; NUM < SIZE_watering_modes_ARREA; NUM++ ) { 
+        if ( NUM == WATERING_MODE ) {
+          if ( ! HUMIDITY_SENSOR_SWITCH ) {
+            *watering_modes_Values_ARREA[ 0 ] = 1;
+            WATERING_MODE = 0;
+            strcpy( OUTPUT_WATERING_MODE, watering_modes_Names_ARREA[ 0 ] );
+          }
+          else {
+            *watering_modes_Values_ARREA[ NUM ] = 1;
+            strcpy( OUTPUT_WATERING_MODE, watering_modes_Names_ARREA[ NUM ] );
+          }
+        }
+        else {
+          *watering_modes_Values_ARREA[ NUM ] = 0;
+        }
+      }
+    }
 
 
-    // ==================== Get Data From Humidity Sensor
+    // ==================== Humidity Sensor
 
     if ( HUMIDITY_SENSOR_SWITCH ) {   // Get Data From Humidity Sensor, Check Low Humidity Level, Output Error If Humidity Sensor Switch On 
 
@@ -572,7 +614,7 @@ void loop() {
         ltoa( SETTINGS_MODE_TIMER, OUTPUT_SETTINGS_MODE_TIMER, 10 );
         ltoa( LCD_BACKLIGHT_TIMER, OUTPUT_LCD_BACKLIGHT_TIMER, 10 );
         ltoa( ERRORS_DETECTION_TIME, OUTPUT_ERRORS_DETECTION_TIME, 10 );
-        ltoa( WATERING_MODE, OUTPUT_WATERING_MODE, 10 );
+        //ltoa( WATERING_MODE, OUTPUT_WATERING_MODE, 10 );
         // ------------------------------------------------------
 
 
@@ -653,6 +695,14 @@ void loop() {
     if (millis() - TIMER_TEST >= 1000) {
       TIMER_TEST = millis();
 
+      Serial.print( WATERING_MODE );
+      Serial.println( " - Watering Mode Value" );
+      Serial.print( OUTPUT_WATERING_MODE );
+      Serial.println( " - Watering Mode Name" );
+      Serial.print( WATERING_MODE_TIMER );
+      Serial.println( " - Watering Mode Timer" );
+      Serial.print( WATERING_MODE_HUMIDITY );
+      Serial.println( " - Watering Mode Humidity" );
 
       if ( LCD_BACKLIGHT_STATUS ) {
         Serial.print( ( LCD_BACKLIGHT_TIMER * 1000L - ( millis() - LCD_BACKLIGHT_TIMER_COUNT ) ) / 1000L );
