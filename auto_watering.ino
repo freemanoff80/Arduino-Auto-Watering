@@ -53,13 +53,13 @@ boolean ENCODER_BUTTON_HOLD_STATUS = 0;
 unsigned long WATERING_TIMER_COUNT;
 unsigned long ERRORS_VAL = 0;
 unsigned long WATERING_INTERVAL_RECOMENDED = 0;
-unsigned long TEST_VAL = 555;
+//unsigned long TEST_VAL = 555;
 
 char MONITOR_WATERING_TIMER[20];
 char MONITOR_HUMIDITY_SENSOR_VALUE[20];
 char MONITOR_ERRORS[20];
 char MONITOR_WATERING_INTERVAL_RECOMENDED[20];
-char MONITOR_TEST_VAL[20];
+char MONITOR_WATERING_MODE[20];
 
 
 // ---------- Settings Values
@@ -71,7 +71,7 @@ int WATERING_TIMER = 2;
 int HUMIDITY_LIMIT_MIN = 20;
 int HUMIDITY_SENSOR_SWITCH = 1;
 int PUMPING_TIME = 5;
-int FORCE_WATERING = 0;
+int WATERING_BY_MANUAL = 0;
 int SETTINGS_MODE_TIMER = 30;
 int LCD_BACKLIGHT_TIMER = 40;
 int ERRORS_DETECTION_TIME = 1;
@@ -81,7 +81,7 @@ char OUTPUT_WATERING_TIMER[20];
 char OUTPUT_HUMIDITY_LIMIT_MIN[20];
 char OUTPUT_HUMIDITY_SENSOR_SWITCH[20];
 char OUTPUT_PUMPING_TIME[20];
-char OUTPUT_FORCE_WATERING[20];
+char OUTPUT_WATERING_BY_MANUAL[20];
 char OUTPUT_SETTINGS_MODE_TIMER[20];
 char OUTPUT_LCD_BACKLIGHT_TIMER[20];
 char OUTPUT_ERRORS_DETECTION_TIME[20];
@@ -93,6 +93,10 @@ boolean WATERING_MODE_HUMIDITY_SENSOR_FLAG = true;
 
 boolean WATERING_MODE_TIMER;
 boolean WATERING_MODE_HUMIDITY;
+
+boolean WATERING_BY_HUMIDITY = false;
+boolean WATERING_BY_TIMER = false;
+boolean WATERING_BY_HUMIDITY_FLAG = false;
 
 char *watering_modes_Names_ARREA[] = {
   "Timer",
@@ -137,7 +141,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
   "Humidity",  
   "Errors",
   "WaterIntRec",
-  "TestValue-1",
+  "WaterMode",
   };
 
   const int SIZE_monitoring_ARRAY = sizeof( monitoring_Names_ARRAY )/sizeof( int );
@@ -147,7 +151,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
   MONITOR_HUMIDITY_SENSOR_VALUE,
   MONITOR_ERRORS,
   MONITOR_WATERING_INTERVAL_RECOMENDED,
-  MONITOR_TEST_VAL,
+  MONITOR_WATERING_MODE,
   };
   
 
@@ -157,7 +161,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
     "HumMinLim",  
     "HumSensor",
     "PumpTime",
-    "ForceWater",
+    "WaterManual",
     "SetModTime",
     "BckLghtTime",
     "ErrDetTime",
@@ -172,7 +176,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
     &HUMIDITY_LIMIT_MIN,
     &HUMIDITY_SENSOR_SWITCH,
     &PUMPING_TIME,
-    &FORCE_WATERING,
+    &WATERING_BY_MANUAL,
     &SETTINGS_MODE_TIMER,
     &LCD_BACKLIGHT_TIMER,
     &ERRORS_DETECTION_TIME,
@@ -208,7 +212,7 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
     OUTPUT_HUMIDITY_LIMIT_MIN,
     OUTPUT_HUMIDITY_SENSOR_SWITCH,
     OUTPUT_PUMPING_TIME,
-    OUTPUT_FORCE_WATERING,
+    OUTPUT_WATERING_BY_MANUAL,
     OUTPUT_SETTINGS_MODE_TIMER,
     OUTPUT_LCD_BACKLIGHT_TIMER,
     OUTPUT_ERRORS_DETECTION_TIME,
@@ -332,7 +336,8 @@ void setup() {
   LCD_BACKLIGHT_TIMER_COUNT = millis();
 
   CURSOR_SIZE_ARRAY = SIZE_monitoring_ARRAY;
-  strcpy( OUTPUT_FORCE_WATERING, "Off" );
+  strcpy( OUTPUT_WATERING_BY_MANUAL, "Off" );
+  PUMP_SWITCH_ON_TIMER = millis();
 
   // ----- Settins For LCD
   lcd.init();           // Initial LCD
@@ -455,8 +460,15 @@ void loop() {
           *watering_modes_Values_ARREA[ NUM ] = 0;
         }
       }
+      if ( WATERING_MODE_TIMER ) {
+        PUMP_SWITCH_ON_TIMER = millis();   // Reset Timer Switch Pump
+      }
     }
 
+
+
+
+    // ==================== 
 
     // ==================== Humidity Sensor
 
@@ -491,20 +503,38 @@ void loop() {
           LOW_HUMIDITY_STATUS_TIMER = millis();
           LOW_HUMIDITY_STATUS_TIMER_FLAG = false;
         }
-  
+
         if ( millis() - LOW_HUMIDITY_STATUS_TIMER > 60000 * ERRORS_DETECTION_TIME ) {
-          
-          LOW_HUMIDITY_STATUS_FLAG = 0;
-          errors_Count_ARRAY[1] = 1;  // Add ID Error To Error Array
+
+          if ( WATERING_MODE_HUMIDITY ) { // If Humidity Watering Mode On Watering Will Be By Low Humidity Level
+            if ( WATERING_BY_HUMIDITY_FLAG ) {
+              WATERING_BY_HUMIDITY_FLAG = false;
+              WATERING_BY_HUMIDITY = true;
+              Serial.println( "### Watering By Humidity ### " );
+            }
+
+            if ( millis() - LOW_HUMIDITY_STATUS_TIMER > ( 60000 * ERRORS_DETECTION_TIME) + 5000 ) {
+              LOW_HUMIDITY_STATUS_FLAG = 0;
+              errors_Count_ARRAY[1] = 1;  // Add ID Error To Error Array
+            }
+          }
+          else {
+            LOW_HUMIDITY_STATUS_FLAG = 0;
+            errors_Count_ARRAY[1] = 1;  // Add ID Error To Error Array
           }
         }
-  
+      }
+
       if ( !LOW_HUMIDITY_STATUS ) {
   
         if ( !LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
           LOW_HUMIDITY_STATUS_TIMER_FLAG = true;
         }
-  
+
+        if ( ! WATERING_BY_HUMIDITY_FLAG ) {
+          WATERING_BY_HUMIDITY_FLAG = true;
+        }
+        
         if ( !LOW_HUMIDITY_STATUS_FLAG ) {
           LOW_HUMIDITY_STATUS_FLAG = 1;
           errors_Count_ARRAY[1] = 0;  // Delete ID Error From Error Array
@@ -522,6 +552,7 @@ void loop() {
       }
         
       if ( millis() - LIQUID_LEVEL_STATUS_TIMER > 60000 * ERRORS_DETECTION_TIME ) {
+
           LIQUID_LEVEL_STATUS_FLAG = 0;
           errors_Count_ARRAY[2] = 1;  // Add ID Error For Low Liquid Level To Error Array
       }
@@ -541,24 +572,28 @@ void loop() {
 
 
     // ================== Pumping Switch On
-    if ( FORCE_WATERING || millis() - PUMP_SWITCH_ON_TIMER > ( 60000 * 60 * WATERING_TIMER ) ) {   //  Check Timer For Switch ON Pump      
+    if ( WATERING_BY_MANUAL || WATERING_BY_HUMIDITY || WATERING_MODE_TIMER && millis() - PUMP_SWITCH_ON_TIMER > ( 60000 * 60 * WATERING_TIMER ) ) {   //  Check Timer For Switch ON Pump      
 
       PUMP_SWITCH_FLAG = 1;
       PUMP_SWITCH_STATUS = 1;
-      FORCE_WATERING = 0;    //  Reset Force Watering To Off
+      WATERING_BY_MANUAL = 0;    //  Reset Force Watering To Off
+      WATERING_BY_HUMIDITY = false;
 
       if ( HUMIDITY_SENSOR_SWITCH ) {
         WATERING_INTERVAL_RECOMENDED = ( learn_pump_delay( HUMIDITY_SENSOR_VALUE, HUMIDITY_LIMIT_MIN, ( 60000 * 60 * WATERING_TIMER ) ) / ( 60000 * 60 ) );
       }
 
-      strcpy( OUTPUT_FORCE_WATERING, "On" );
+      strcpy( OUTPUT_WATERING_BY_MANUAL, "On" );
       digitalWrite( LED_PUMP, PUMP_SWITCH_STATUS );   // LED_PUMP_SWITCH - ON
       if ( PUMP_INCLUDE ) {
         digitalWrite( PUMP, PUMP_SWITCH_STATUS );   // PUMP_SWITCH - ON
       }
 
+      //PUMP_SWITCH_ON_TIMER = millis();   // Reset Timer Switch Pump
+      if ( WATERING_MODE_TIMER ) {
+        PUMP_SWITCH_ON_TIMER = millis();   // Reset Timer Switch Pump
+      }
       PUMP_SWITCH_OFF_TIMER = millis() + ( PUMPING_TIME * 1000 ) ;    // Set Time Of Pumping
-      PUMP_SWITCH_ON_TIMER = millis();   // Reset Timer Switch Pump
 
       Serial.print( "LED_PUMP - ON, PUMP_SWITCH_STATUS - " );
       Serial.println( PUMP_SWITCH_STATUS );
@@ -571,7 +606,7 @@ void loop() {
       PUMP_SWITCH_FLAG = 0;
       PUMP_SWITCH_STATUS = 0;
       
-      strcpy( OUTPUT_FORCE_WATERING, "Off" );
+      strcpy( OUTPUT_WATERING_BY_MANUAL, "Off" );
       DISPLAY_UPDATE_FORCE = 1; // Force Update Display After Change Value
       digitalWrite( LED_PUMP, PUMP_SWITCH_STATUS );   // LED_PUMP_SWITCH - OFF
       if ( PUMP_INCLUDE ) {
@@ -656,7 +691,8 @@ void loop() {
         strcpy( MONITOR_WATERING_INTERVAL_RECOMENDED, "Off" );
       }
 
-      ultoa(TEST_VAL, MONITOR_TEST_VAL, 10);
+      //ultoa(TEST_VAL, MONITOR_TEST_VAL, 10);
+      strcpy( MONITOR_WATERING_MODE, OUTPUT_WATERING_MODE );
       // ------------------------------------------------------
 
       // ---------- Change Error Value For Monitor Ouput Array
