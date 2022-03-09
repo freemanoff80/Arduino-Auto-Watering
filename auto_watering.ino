@@ -1,13 +1,9 @@
-#include <EncButton.h>
-//#include <EncButton2.h>
-#define _EB_HOLD 3000
-
 #include <LiquidCrystal_I2C.h>
-
-
-EncButton<EB_TICK, 8, 9, 10> enc;  // энкодер с кнопкой <A, B, KEY>
-
 LiquidCrystal_I2C lcd(0x27, 20, 4);
+
+#include <EncButton.h>
+#define _EB_HOLD 3000
+EncButton<EB_TICK, 8, 9, 10> enc;  // энкодер с кнопкой <A, B, KEY>
 
 #define HUMIDITY_SENSOR A6
 //int HUMIDITY_SENSOR = A6;
@@ -48,7 +44,6 @@ unsigned long ENCODER_BUTTON_HOLD_TIMER;
 boolean ENCODER_BUTTON_HOLD_FLAG = 0;
 boolean ENCODER_BUTTON_HOLD_STATUS = 0;
 
-
 // ---------- Monitor Values
 unsigned long WATERING_TIMER_COUNT;
 unsigned long ERRORS_VAL = 0;
@@ -60,7 +55,6 @@ char MONITOR_HUMIDITY_SENSOR_VALUE[20];
 char MONITOR_ERRORS[20];
 char MONITOR_WATERING_INTERVAL_RECOMENDED[20];
 char MONITOR_WATERING_MODE[20];
-
 
 // ---------- Settings Values
 boolean SETTINGS_MODE_STATUS = false;
@@ -135,100 +129,99 @@ unsigned long LCD_BACKLIGHT_TIMER_COUNT;
 //boolean LEARNING = true;
 //int HUMIDITY_LIMIT_MAX = 70;
 
-  // ---------- Monitoring Arrays
-  const char *monitoring_Names_ARRAY[] = {
-  "WaterTimer",
-  "Humidity",  
-  "Errors",
-  "WaterIntRec",
-  "WaterMode",
-  };
+// ---------- Monitoring Arrays
+const char *monitoring_Names_ARRAY[] = {
+"WaterTimer",
+"Humidity",  
+"Errors",
+"WaterIntRec",
+"WaterMode",
+};
 
-  const int SIZE_monitoring_ARRAY = sizeof( monitoring_Names_ARRAY )/sizeof( int );
+const int SIZE_monitoring_ARRAY = sizeof( monitoring_Names_ARRAY )/sizeof( int );
 
-  char *monitoring_Values_ARRAY[ SIZE_monitoring_ARRAY ] = {
-  MONITOR_WATERING_TIMER,
-  MONITOR_HUMIDITY_SENSOR_VALUE,
-  MONITOR_ERRORS,
-  MONITOR_WATERING_INTERVAL_RECOMENDED,
-  MONITOR_WATERING_MODE,
-  };
+char *monitoring_Values_ARRAY[ SIZE_monitoring_ARRAY ] = {
+MONITOR_WATERING_TIMER,
+MONITOR_HUMIDITY_SENSOR_VALUE,
+MONITOR_ERRORS,
+MONITOR_WATERING_INTERVAL_RECOMENDED,
+MONITOR_WATERING_MODE,
+};
   
 
-  // ---------- Settings Arrays
-  const char *settings_Names_ARREA[] = {
-    "WaterTimer",
-    "HumMinLim",  
-    "HumSensor",
-    "PumpTime",
-    "WaterManual",
-    "SetModTime",
-    "BckLghtTime",
-    "ErrDetTime",
-    "WaterMode",
-  };
+// ---------- Settings Arrays
+const char *settings_Names_ARREA[] = {
+  "WaterMode",
+  "WaterTimer",
+  "HumMinLim",  
+  "HumSensor",
+  "PumpTime",
+  "WaterManual",
+  "SetModTime",
+  "BckLghtTime",
+  "ErrDetTime",
+};
 
-  const int SIZE_settings_ARREA = sizeof( settings_Names_ARREA )/sizeof( int );
+const int SIZE_settings_ARREA = sizeof( settings_Names_ARREA )/sizeof( int );
 
-  int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
-  { // Default Settings Values
-    &WATERING_TIMER,
-    &HUMIDITY_LIMIT_MIN,
-    &HUMIDITY_SENSOR_SWITCH,
-    &PUMPING_TIME,
-    &WATERING_BY_MANUAL,
-    &SETTINGS_MODE_TIMER,
-    &LCD_BACKLIGHT_TIMER,
-    &ERRORS_DETECTION_TIME,
-    &WATERING_MODE,
-  },
-  { // Low Limit Settings Values
-    1,    //  WaterTimer
-    0,    //  HumMinLim
-    0,    //  HumSensor
-    1,    //  PumpTime
-    0,    //  ForceWater
-    10,   //  SetModTime
-    10,   //  BckLghtTime
-    0,    //  ErrDetTime
-    0,    //  WaterMode
-  },
-  { // High Limit Settings Values
-    336,  //  WaterTimer
-    90,   //  HumMinLim
-    1,    //  HumSensor
-    10,   //  PumpTime
-    1,    //  ForceWater
-    120,  //  SetModTime
-    120,  //  BckLghtTime
-    60,   //  ErrDetTime
-    SIZE_watering_modes_ARREA - 1,  //  WaterMode
-  }
-  };
+int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
+{ // Default Settings Values
+  &WATERING_MODE,
+  &WATERING_TIMER,
+  &HUMIDITY_LIMIT_MIN,
+  &HUMIDITY_SENSOR_SWITCH,
+  &PUMPING_TIME,
+  &WATERING_BY_MANUAL,
+  &SETTINGS_MODE_TIMER,
+  &LCD_BACKLIGHT_TIMER,
+  &ERRORS_DETECTION_TIME,
+},
+{ // Low Limit Settings Values
+  0,    //  WaterMode
+  1,    //  WaterTimer
+  0,    //  HumMinLim
+  0,    //  HumSensor
+  1,    //  PumpTime
+  0,    //  ForceWater
+  10,   //  SetModTime
+  10,   //  BckLghtTime
+  0,    //  ErrDetTime
+},
+{ // High Limit Settings Values
+  SIZE_watering_modes_ARREA - 1,  //  WaterMode
+  336,  //  WaterTimer
+  90,   //  HumMinLim
+  1,    //  HumSensor
+  10,   //  PumpTime
+  1,    //  ForceWater
+  120,  //  SetModTime
+  120,  //  BckLghtTime
+  60,   //  ErrDetTime
+}
+};
 
+char *settings_Output_ARREA[ SIZE_settings_ARREA ] = {
+  OUTPUT_WATERING_MODE,
+  OUTPUT_WATERING_TIMER,
+  OUTPUT_HUMIDITY_LIMIT_MIN,
+  OUTPUT_HUMIDITY_SENSOR_SWITCH,
+  OUTPUT_PUMPING_TIME,
+  OUTPUT_WATERING_BY_MANUAL,
+  OUTPUT_SETTINGS_MODE_TIMER,
+  OUTPUT_LCD_BACKLIGHT_TIMER,
+  OUTPUT_ERRORS_DETECTION_TIME,
+};
 
-  char *settings_Output_ARREA[ SIZE_settings_ARREA ] = {
-    OUTPUT_WATERING_TIMER,
-    OUTPUT_HUMIDITY_LIMIT_MIN,
-    OUTPUT_HUMIDITY_SENSOR_SWITCH,
-    OUTPUT_PUMPING_TIME,
-    OUTPUT_WATERING_BY_MANUAL,
-    OUTPUT_SETTINGS_MODE_TIMER,
-    OUTPUT_LCD_BACKLIGHT_TIMER,
-    OUTPUT_ERRORS_DETECTION_TIME,
-    OUTPUT_WATERING_MODE,
-  };
+// ---------- Errors Arrays
+const char *errors_Names_ARRAY[] {
+  "None",
+  "LowHum",
+  "NotWat",
+};
 
-  // ---------- Errors Arrays
-  const char *errors_Names_ARRAY[] {
-    "None",
-    "LowHum",
-    "NotWat",
-  };
+const int SIZE_errors_ARRAY = sizeof( errors_Names_ARRAY )/sizeof( int );
 
-  const int SIZE_errors_ARRAY = sizeof( errors_Names_ARRAY )/sizeof( int );
-
-  int errors_Count_ARRAY[ SIZE_errors_ARRAY ];
+int errors_Count_ARRAY[ SIZE_errors_ARRAY ];
 
 
 // ================== Function For Output On Display
@@ -395,7 +388,7 @@ void loop() {
       LCD_BACKLIGHT_TIMER_COUNT = millis();
 
       LCD_BACKLIGHT_STATUS = 1;
-      
+
       lcd.backlight();
 
       if ( !SETTINGS_MODE_STATUS ) {  
@@ -668,8 +661,13 @@ void loop() {
     // ================== Timer For Used Values
     if (millis() - TIMER_COUNT_VALUES >= 1000) {
       TIMER_COUNT_VALUES = millis();
-      
-      WATERING_TIMER_COUNT = ( ( 60000 * 60 * WATERING_TIMER ) - ( millis() - PUMP_SWITCH_ON_TIMER ) ) / 1000L ;
+
+      if ( WATERING_MODE_TIMER ) {
+        WATERING_TIMER_COUNT = ( ( 60000 * 60 * WATERING_TIMER ) - ( millis() - PUMP_SWITCH_ON_TIMER ) ) / 1000L ;  
+      }
+      else {
+        WATERING_TIMER_COUNT = 0;
+      }
 
       // ---------- Converting Any Value For Monitor Ouput Array
       //sprintf( MONITOR_WATERING_TIMER, "%ud%uh%um%us",
