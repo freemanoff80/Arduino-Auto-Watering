@@ -1,3 +1,9 @@
+#include <EEPROM.h>
+boolean SETTINGS_MEMORY_INIT = false;
+boolean SETTINGS_MEMORY_WRITE_FLAG = false;
+boolean SETTINGS_RESET_TIMER_FLAG = true;
+unsigned long SETTINGS_RESET_TIMER;
+
 #include <LiquidCrystal_I2C.h>
 LiquidCrystal_I2C lcd(0x27, 20, 4);
 
@@ -61,16 +67,18 @@ boolean SETTINGS_MODE_STATUS = false;
 unsigned long SETTINGS_MODE_TIMER_COUNT;
 int SETTINGS_CHANGE_INCREMENT = 0;
 
-int WATERING_TIMER = 2;
-int HUMIDITY_LIMIT_MIN = 20;
-int HUMIDITY_SENSOR_SWITCH = 1;
-int PUMPING_TIME = 5;
-int WATERING_BY_MANUAL = 0;
-int SETTINGS_MODE_TIMER = 30;
-int LCD_BACKLIGHT_TIMER = 40;
-int ERRORS_DETECTION_TIME = 1;
-int WATERING_MODE = 0;
+int WATERING_MODE;
+int WATERING_TIMER;
+int HUMIDITY_LIMIT_MIN;
+int HUMIDITY_SENSOR_SWITCH;
+int PUMPING_TIME;
+int WATERING_BY_MANUAL;
+int SETTINGS_MODE_TIMER;
+int LCD_BACKLIGHT_TIMER;
+int ERRORS_DETECTION_TIME;
+int SETTINGS_RESET;
 
+char OUTPUT_WATERING_MODE[20];
 char OUTPUT_WATERING_TIMER[20];
 char OUTPUT_HUMIDITY_LIMIT_MIN[20];
 char OUTPUT_HUMIDITY_SENSOR_SWITCH[20];
@@ -79,7 +87,7 @@ char OUTPUT_WATERING_BY_MANUAL[20];
 char OUTPUT_SETTINGS_MODE_TIMER[20];
 char OUTPUT_LCD_BACKLIGHT_TIMER[20];
 char OUTPUT_ERRORS_DETECTION_TIME[20];
-char OUTPUT_WATERING_MODE[20];
+char OUTPUT_SETTINGS_RESET[20];
 
 // ---------- Watering Modes Vars
 int WATERING_MODE_MEMORY = 1; // Value 1 - For Set Watering Mode At Start Programm
@@ -160,11 +168,12 @@ const char *settings_Names_ARREA[] = {
   "SetModTime",
   "BckLghtTime",
   "ErrDetTime",
+  "SetReset",
 };
 
 const int SIZE_settings_ARREA = sizeof( settings_Names_ARREA )/sizeof( int );
 
-int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
+int *settings_Values_ARREA[4][ SIZE_settings_ARREA ] = {
 { // Default Settings Values
   &WATERING_MODE,
   &WATERING_TIMER,
@@ -175,6 +184,7 @@ int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
   &SETTINGS_MODE_TIMER,
   &LCD_BACKLIGHT_TIMER,
   &ERRORS_DETECTION_TIME,
+  &SETTINGS_RESET,
 },
 { // Low Limit Settings Values
   0,    //  WaterMode
@@ -186,6 +196,7 @@ int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
   10,   //  SetModTime
   10,   //  BckLghtTime
   0,    //  ErrDetTime
+  0,    //  SetReset
 },
 { // High Limit Settings Values
   SIZE_watering_modes_ARREA - 1,  //  WaterMode
@@ -197,6 +208,19 @@ int *settings_Values_ARREA[3][ SIZE_settings_ARREA ] = {
   120,  //  SetModTime
   120,  //  BckLghtTime
   60,   //  ErrDetTime
+  1,    //  SetReset
+},
+{ // Default Settings Values
+  0,    //  WaterMode
+  2,    //  WaterTimer
+  20,    //  HumMinLim
+  1,    //  HumSensor
+  5,    //  PumpTime
+  0,    //  ForceWater
+  30,   //  SetModTime
+  40,   //  BckLghtTime
+  1,    //  ErrDetTime
+  0,    //  SetReset
 }
 };
 
@@ -210,6 +234,7 @@ char *settings_Output_ARREA[ SIZE_settings_ARREA ] = {
   OUTPUT_SETTINGS_MODE_TIMER,
   OUTPUT_LCD_BACKLIGHT_TIMER,
   OUTPUT_ERRORS_DETECTION_TIME,
+  OUTPUT_SETTINGS_RESET
 };
 
 // ---------- Errors Arrays
@@ -317,14 +342,15 @@ unsigned long learn_pump_delay( int HUMIDITY_CURRENT, int HUMIDITY_LIMIT, unsign
 
 
 void setup() {
-
+  enc.tick(); // Reads Encoder Value
+  
   Serial.begin(9600);
   pinMode( PUMP, OUTPUT);   // PUMP_SWITCH
   pinMode( LED_PUMP, OUTPUT);   // PUMP_LED
   pinMode( LED_ERROR_STATUS, OUTPUT);   // LED_HUMIDITY_STATUS
   pinMode( LIQUID_LEVEL_SENSOR, INPUT_PULLUP ); // Liquid Level Sensor
   //pinMode( HUMIDITY_SENSOR, INPUT);   // HUMIDITY_SENSOR
-  delay ( 10000 );    // Delay For Calibration Humidity Sensor
+  delay ( 5000 );    // Delay For Calibration Humidity Sensor  
 
   LCD_BACKLIGHT_TIMER_COUNT = millis();
 
@@ -334,10 +360,23 @@ void setup() {
 
   // ----- Settins For LCD
   lcd.init();           // Initial LCD
-  lcd.backlight();      // Backlight Switch On  
+  lcd.backlight();      // Backlight Switch On
 
-  //errors_Count_ARRAY[1] = 1;
-  //errors_Count_ARRAY[2] = 1;
+  //SETTINGS_MEMORY_INIT = 1;
+  if ( SETTINGS_MEMORY_INIT ) {
+    for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) { // Write Default Settings Values To Memory Arduino
+      EEPROM.put( NUM * 2, (int)settings_Values_ARREA[3][ NUM ] );
+    }
+    
+    for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) { // Write Default Settings Values From Memory Arduino
+      EEPROM.get( NUM * 2, *settings_Values_ARREA[0][ NUM ] );
+    }
+  }
+  else {
+    for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) { // Write Settings Values From Memory Arduino
+      EEPROM.get( NUM * 2, *settings_Values_ARREA[0][ NUM ] );
+    }
+  }
 
 }
 
@@ -375,7 +414,15 @@ void loop() {
     // ================== Encoder Button Press For On or Off Settings Change Mode
     if ( !MONITOR_MODE_STATUS && enc.click() ) {
       SETTINGS_MODE_STATUS = !SETTINGS_MODE_STATUS;
-      //Serial.println( SETTINGS_MODE_STATUS );
+      
+      if ( SETTINGS_MODE_STATUS && ! SETTINGS_MEMORY_WRITE_FLAG ) {
+        SETTINGS_MEMORY_WRITE_FLAG = true; 
+      }
+      if ( ! SETTINGS_MODE_STATUS && SETTINGS_MEMORY_WRITE_FLAG ) {
+        SETTINGS_MEMORY_WRITE_FLAG = false;
+        EEPROM.put( CURSOR_CURRENT_LINE * 2, *settings_Values_ARREA[0][ CURSOR_CURRENT_LINE ] );
+      }
+
     }
 
 
@@ -426,7 +473,28 @@ void loop() {
       LCD_BACKLIGHT_STATUS = 0;
       lcd.noBacklight();
 
-      //Serial.println( LCD_BACKLIGHT_STATUS );
+    }
+
+
+    // ==================== Settings Reset
+    if ( SETTINGS_RESET ) {
+      SETTINGS_RESET = 0;
+      SETTINGS_RESET_TIMER = millis();
+      SETTINGS_RESET_TIMER_FLAG = true;
+      
+      for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) { // Set Default Settings Values
+        *settings_Values_ARREA[0][ NUM ] = (int)settings_Values_ARREA[3][ NUM ] ;
+      }
+      
+      for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) { // Write Default Settings Values To Memory Arduino
+        EEPROM.put( NUM * 2, (int)settings_Values_ARREA[3][ NUM ] );
+      }
+      strcpy( OUTPUT_SETTINGS_RESET, "Yes" );
+    }
+
+    if ( millis() - SETTINGS_RESET_TIMER > 1000 && SETTINGS_RESET_TIMER_FLAG ) {
+      SETTINGS_RESET_TIMER_FLAG = false;
+      strcpy( OUTPUT_SETTINGS_RESET, "No" );
     }
 
 
@@ -458,10 +526,6 @@ void loop() {
       }
     }
 
-
-
-
-    // ==================== 
 
     // ==================== Humidity Sensor
 
@@ -588,9 +652,6 @@ void loop() {
       }
       PUMP_SWITCH_OFF_TIMER = millis() + ( PUMPING_TIME * 1000 ) ;    // Set Time Of Pumping
 
-      Serial.print( "LED_PUMP - ON, PUMP_SWITCH_STATUS - " );
-      Serial.println( PUMP_SWITCH_STATUS );
-
     }
 
     // ================== Pumping Switch Off
@@ -604,11 +665,7 @@ void loop() {
       digitalWrite( LED_PUMP, PUMP_SWITCH_STATUS );   // LED_PUMP_SWITCH - OFF
       if ( PUMP_INCLUDE ) {
         digitalWrite( PUMP, PUMP_SWITCH_STATUS );   // PUMP_SWITCH - OFF
-      }
-      
-      Serial.print( "LED_PUMP - OFF, PUMP_SWITCH_STATUS - " );
-      Serial.println( PUMP_SWITCH_STATUS );
-
+      }     
     }
 
 
@@ -642,9 +699,10 @@ void loop() {
         ltoa( SETTINGS_MODE_TIMER, OUTPUT_SETTINGS_MODE_TIMER, 10 );
         ltoa( LCD_BACKLIGHT_TIMER, OUTPUT_LCD_BACKLIGHT_TIMER, 10 );
         ltoa( ERRORS_DETECTION_TIME, OUTPUT_ERRORS_DETECTION_TIME, 10 );
-        //ltoa( WATERING_MODE, OUTPUT_WATERING_MODE, 10 );
+        
+        //if ( SETTINGS_RESET ) strcpy( OUTPUT_SETTINGS_RESET, "Yes" );
+        //else strcpy( OUTPUT_SETTINGS_RESET, "No" );
         // ------------------------------------------------------
-
 
         printDisplay( 
               DISPLAY_LINES,
@@ -728,16 +786,13 @@ void loop() {
     // ================== Timer For Test 
     if (millis() - TIMER_TEST >= 1000) {
       TIMER_TEST = millis();
-
-      Serial.print( WATERING_MODE );
-      Serial.println( " - Watering Mode Value" );
-      Serial.print( OUTPUT_WATERING_MODE );
-      Serial.println( " - Watering Mode Name" );
-      Serial.print( WATERING_MODE_TIMER );
-      Serial.println( " - Watering Mode Timer" );
-      Serial.print( WATERING_MODE_HUMIDITY );
-      Serial.println( " - Watering Mode Humidity" );
-
+      
+      Serial.println( "----------------" );
+      for ( int NUM = 0; NUM < SIZE_settings_ARREA; NUM++ ) {
+        Serial.println( EEPROM.read( NUM * 2 ) );
+      }
+      Serial.println( "----------------" );
+      
       if ( LCD_BACKLIGHT_STATUS ) {
         Serial.print( ( LCD_BACKLIGHT_TIMER * 1000L - ( millis() - LCD_BACKLIGHT_TIMER_COUNT ) ) / 1000L );
         Serial.println( " - LCD Backlight Timer" );
