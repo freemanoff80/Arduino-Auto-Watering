@@ -9,13 +9,14 @@ LiquidCrystal_I2C lcd(0x27, 20, 4);
 
 #include <EncButton.h>
 #define _EB_HOLD 3000
-EncButton<EB_TICK, 8, 9, 10> enc;  // энкодер с кнопкой <A, B, KEY>
+EncButton<EB_TICK, 5, 6, 7> enc;  // энкодер с кнопкой <A, B, KEY>
 
 #define HUMIDITY_SENSOR A6
 //int HUMIDITY_SENSOR = A6;
 int PUMP = 2;
 int LED_PUMP = 3;
 int LED_ERROR_STATUS = 4;
+int LIQUID_LEVEL_SENSOR = 8;
 
 boolean switcher = 1;
 
@@ -39,7 +40,6 @@ int PUMP_SWITCH_FLAG = 0;
 boolean PUMP_INCLUDE = true;
 
 // ---------- Liquid Level Sensor
-int LIQUID_LEVEL_SENSOR = 11;
 boolean LIQUID_LEVEL_STATUS;
 unsigned long LIQUID_LEVEL_STATUS_TIMER = 0;
 boolean LIQUID_LEVEL_STATUS_FLAG = true;
@@ -54,7 +54,6 @@ boolean ENCODER_BUTTON_HOLD_STATUS = 0;
 unsigned long WATERING_TIMER_COUNT;
 unsigned long ERRORS_VAL = 0;
 unsigned long WATERING_INTERVAL_RECOMENDED = 0;
-//unsigned long TEST_VAL = 555;
 
 char MONITOR_WATERING_TIMER[20];
 char MONITOR_HUMIDITY_SENSOR_VALUE[20];
@@ -133,9 +132,6 @@ boolean MONITOR_MODE_STATUS = true;
 boolean LCD_BACKLIGHT_STATUS = 1;
 unsigned long LCD_BACKLIGHT_TIMER_COUNT;
 
-
-//boolean LEARNING = true;
-//int HUMIDITY_LIMIT_MAX = 70;
 
 // ---------- Monitoring Arrays
 const char *monitoring_Names_ARRAY[] = {
