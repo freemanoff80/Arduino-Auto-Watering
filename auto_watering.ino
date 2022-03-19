@@ -71,6 +71,7 @@ int WATERING_MODE;
 int WATERING_TIMER;
 int HUMIDITY_LIMIT_MIN;
 int HUMIDITY_SENSOR_SWITCH;
+int LIQUID_LEVEL_SENSOR_SWITCH;
 int PUMPING_TIME;
 int WATERING_BY_MANUAL;
 int SETTINGS_MODE_TIMER;
@@ -82,6 +83,7 @@ char OUTPUT_WATERING_MODE[20];
 char OUTPUT_WATERING_TIMER[20];
 char OUTPUT_HUMIDITY_LIMIT_MIN[20];
 char OUTPUT_HUMIDITY_SENSOR_SWITCH[20];
+char OUTPUT_LIQUID_LEVEL_SENSOR_SWITCH[20];
 char OUTPUT_PUMPING_TIME[20];
 char OUTPUT_WATERING_BY_MANUAL[20];
 char OUTPUT_SETTINGS_MODE_TIMER[20];
@@ -168,6 +170,7 @@ const char *settings_Names_ARREA[] = {
   "WaterTimer",
   "HumMinLim",  
   "HumSensor",
+  "LiqSensor",
   "PumpTime",
   "WaterManual",
   "SetModTime",
@@ -184,6 +187,7 @@ int *settings_Values_ARREA[4][ SIZE_settings_ARREA ] = {
   &WATERING_TIMER,
   &HUMIDITY_LIMIT_MIN,
   &HUMIDITY_SENSOR_SWITCH,
+  &LIQUID_LEVEL_SENSOR_SWITCH,
   &PUMPING_TIME,
   &WATERING_BY_MANUAL,
   &SETTINGS_MODE_TIMER,
@@ -195,7 +199,8 @@ int *settings_Values_ARREA[4][ SIZE_settings_ARREA ] = {
   0,    //  WaterMode
   1,    //  WaterTimer
   0,    //  HumMinLim
-  0,    //  HumSensor
+  0,    //  Humidity Sensor
+  0,    //  Liquid Sensor  
   1,    //  PumpTime
   0,    //  ForceWater
   10,   //  SetModTime
@@ -207,7 +212,8 @@ int *settings_Values_ARREA[4][ SIZE_settings_ARREA ] = {
   SIZE_watering_modes_ARREA - 1,  //  WaterMode
   336,  //  WaterTimer
   90,   //  HumMinLim
-  1,    //  HumSensor
+  1,    //  Humidity Sensor
+  1,    //  Liquid Sensor
   10,   //  PumpTime
   1,    //  ForceWater
   120,  //  SetModTime
@@ -218,8 +224,9 @@ int *settings_Values_ARREA[4][ SIZE_settings_ARREA ] = {
 { // Default Settings Values
   0,    //  WaterMode
   2,    //  WaterTimer
-  20,    //  HumMinLim
-  1,    //  HumSensor
+  20,   //  HumMinLim
+  1,    //  Humidity Sensor
+  1,    //  Liquid Sensor  
   5,    //  PumpTime
   0,    //  ForceWater
   30,   //  SetModTime
@@ -234,6 +241,7 @@ char *settings_Output_ARREA[ SIZE_settings_ARREA ] = {
   OUTPUT_WATERING_TIMER,
   OUTPUT_HUMIDITY_LIMIT_MIN,
   OUTPUT_HUMIDITY_SENSOR_SWITCH,
+  OUTPUT_LIQUID_LEVEL_SENSOR_SWITCH,
   OUTPUT_PUMPING_TIME,
   OUTPUT_WATERING_BY_MANUAL,
   OUTPUT_SETTINGS_MODE_TIMER,
@@ -393,7 +401,9 @@ void loop() {
 
     enc.tick(); // Reads Encoder Value
 
-    LIQUID_LEVEL_STATUS = digitalRead( LIQUID_LEVEL_SENSOR ); // Read Signal From Liquid Level Sensor 
+    if ( LIQUID_LEVEL_SENSOR_SWITCH ) { LIQUID_LEVEL_STATUS = digitalRead( LIQUID_LEVEL_SENSOR ); }  // Read Signal From Liquid Level Sensor
+    else { LIQUID_LEVEL_STATUS = 0; }
+    
     SETTINGS_CHANGE_INCREMENT = 0;
 
 
@@ -588,6 +598,7 @@ void loop() {
         }
       }
 
+
       if ( !LOW_HUMIDITY_STATUS ) {
   
         if ( !LOW_HUMIDITY_STATUS_TIMER_FLAG ) {
@@ -703,6 +714,10 @@ void loop() {
 
         if ( HUMIDITY_SENSOR_SWITCH ) strcpy( OUTPUT_HUMIDITY_SENSOR_SWITCH, "On" );
         else strcpy( OUTPUT_HUMIDITY_SENSOR_SWITCH, "Off" );
+
+        // ###### Testing 
+        if ( LIQUID_LEVEL_SENSOR_SWITCH ) strcpy( OUTPUT_LIQUID_LEVEL_SENSOR_SWITCH, "On" );
+        else strcpy( OUTPUT_LIQUID_LEVEL_SENSOR_SWITCH, "Off" );        
 
         ltoa( SETTINGS_MODE_TIMER, OUTPUT_SETTINGS_MODE_TIMER, 10 );
         ltoa( LCD_BACKLIGHT_TIMER, OUTPUT_LCD_BACKLIGHT_TIMER, 10 );
