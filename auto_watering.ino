@@ -17,6 +17,7 @@ int PUMP = 2;
 int LED_PUMP = 3;
 int LED_ERROR_STATUS = 4;
 int LIQUID_LEVEL_SENSOR = 8;
+int BUZZER = 9;
 
 boolean switcher = 1;
 
@@ -132,6 +133,14 @@ boolean MONITOR_MODE_STATUS = true;
 boolean LCD_BACKLIGHT_STATUS = 1;
 unsigned long LCD_BACKLIGHT_TIMER_COUNT;
 
+// ---------- Buzzer
+boolean BUZZER_ALARM_ON = false;
+boolean BUZZER_ALARM_STATUS = true;
+boolean BUZZER_ALARM_FLAG = true;
+unsigned long TIMER_BUZZER_ALARM_ON;
+unsigned long TIMER_BUZZER_ALARM_OFF;
+int BUZZER_ALARM_INTERVAL = 10;  //  Interval Alarm In Seconds
+int BUZZER_ALARM_TIME = 1;      //  Time Output Alarm In Seconds
 
 // ---------- Monitoring Arrays
 const char *monitoring_Names_ARRAY[] = {
@@ -345,6 +354,7 @@ void setup() {
   pinMode( LED_PUMP, OUTPUT);   // PUMP_LED
   pinMode( LED_ERROR_STATUS, OUTPUT);   // LED_HUMIDITY_STATUS
   pinMode( LIQUID_LEVEL_SENSOR, INPUT_PULLUP ); // Liquid Level Sensor
+  pinMode( BUZZER, OUTPUT);   // BUZZER_ALARM
   //pinMode( HUMIDITY_SENSOR, INPUT);   // HUMIDITY_SENSOR
   delay ( 5000 );    // Delay For Calibration Humidity Sensor  
 
@@ -608,6 +618,7 @@ void loop() {
 
           LIQUID_LEVEL_STATUS_FLAG = 0;
           errors_Count_ARRAY[2] = 1;  // Add ID Error For Low Liquid Level To Error Array
+          BUZZER_ALARM_ON = true;     // Switch On Buzzer Alarm Then Liquid Level Low
       }
     }
 
@@ -620,6 +631,7 @@ void loop() {
       if ( !LIQUID_LEVEL_STATUS_FLAG ) {
         LIQUID_LEVEL_STATUS_FLAG = 1;
         errors_Count_ARRAY[2] = 0;  // Delete ID Error For Low Liquid Level To Error Array
+        BUZZER_ALARM_ON = false;    // Switch Off Buzzer Alarm Then Liquid Level Normal
       }
     }
 
@@ -709,6 +721,22 @@ void loop() {
               DISPLAY_CURSOR_VISIBLE
               );        
       }
+    }
+
+
+    // ================== Buzzer Alarm
+    if ( BUZZER_ALARM_FLAG && millis() - TIMER_BUZZER_ALARM_ON >= 1000 * BUZZER_ALARM_INTERVAL && BUZZER_ALARM_ON ) {
+      BUZZER_ALARM_FLAG = false;
+      TIMER_BUZZER_ALARM_ON = millis();
+      TIMER_BUZZER_ALARM_OFF = millis() + ( BUZZER_ALARM_TIME * 1000 ) ;
+
+      digitalWrite( BUZZER, BUZZER_ALARM_STATUS );
+    }
+
+    if ( ! BUZZER_ALARM_FLAG && millis() > TIMER_BUZZER_ALARM_OFF ) {
+      BUZZER_ALARM_FLAG = true;
+
+      digitalWrite( BUZZER, !BUZZER_ALARM_STATUS );
     }
 
 
