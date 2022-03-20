@@ -2,4 +2,4 @@
 
 Auto Watering for timer, humidity level.
 
-![Auto-Watering-v2](https://user-images.githubusercontent.com/58390407/159154526-8af49cea-a648-49a0-9b68-35846ae56f5c.JPG)
+![Auto-Watering-v3](https://user-images.githubusercontent.com/58390407/159160890-998cd2d9-11e3-40e1-b1f2-3c7c646aeebd.JPG)
